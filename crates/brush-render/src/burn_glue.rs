@@ -73,6 +73,7 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
                     compact_gid_from_isect,
                     global_from_compact_gid,
                     out_img,
+                    out_img_gradient,
                     visible,
                 ] = outputs;
 
@@ -90,6 +91,7 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
 
                 // Register output.
                 h.register_float_tensor::<MainBackendBase>(&out_img.id, img);
+                h.register_float_tensor::<MainBackendBase>(&out_img_gradient.id, aux.img_gradient);
                 h.register_float_tensor::<MainBackendBase>(
                     &projected_splats.id,
                     aux.projected_splats,
@@ -130,6 +132,10 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
             vec![img_size.y as usize, img_size.x as usize, channels],
             if bwd_info { DType::F32 } else { DType::U32 },
         );
+        let out_img_gradient = client.tensor_uninitialized(
+            vec![img_size.y as usize, img_size.x as usize, 4*3],
+            DType::F32,
+        ); 
 
         let visible_shape = if bwd_info { vec![num_points] } else { vec![1] };
 
@@ -146,6 +152,7 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
             global_from_compact_gid: client.tensor_uninitialized(vec![num_points], DType::U32),
             visible: client.tensor_uninitialized(visible_shape, DType::F32),
             img_size,
+            img_gradient: out_img_gradient,
         };
 
         let mut stream = OperationStreams::default();
@@ -159,6 +166,7 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
             &aux.global_from_compact_gid,
             &out_img,
             &aux.visible,
+            &aux.img_gradient,
         ];
         for inp in &input_tensors {
             stream.tensor(inp);

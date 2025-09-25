@@ -3,7 +3,7 @@ use crate::{
     INTERSECTS_UPPER_BOUND, MainBackendBase,
     camera::Camera,
     dim_check::DimCheck,
-    kernels::{MapGaussiansToIntersect, ProjectSplats, ProjectVisible, Rasterize},
+    kernels::{MapGaussiansToIntersect, ProjectSplats, ProjectVisible, Rasterize,Upscale},
     render_aux::RenderAux,
     sh::sh_degree_from_coeffs,
 };
@@ -70,6 +70,9 @@ pub(crate) fn render_forward(
         img_size[0] > 0 && img_size[1] > 0,
         "Can't render images with 0 size."
     );
+    
+    let target_size = glam::UVec2::new(img_size[0], img_size[1]);
+    let img_size = glam::UVec2::new(img_size[0]/4, img_size[1]/4);
 
     // Tensor params might not be contiguous, convert them to contiguous tensors.
     let means = into_contiguous(means);
@@ -124,6 +127,8 @@ pub(crate) fn render_forward(
         background: [background.x, background.y, background.z, 1.0],
         // Nb: Bit of a hack as these aren't _really_ uniforms but are written to by the shaders.
         num_visible: 0,
+        target_size: target_size.into(),
+        pad: [0, 0],
     };
 
     // Nb: This contains both static metadata and some dynamic data so can't pass this as metadata to execute. In the future
@@ -337,12 +342,21 @@ pub(crate) fn render_forward(
         DType::F32,
     );
 
+    let out_img_gradient = create_tensor(
+        [img_size.y as usize, img_size.x as usize, 4*3],
+        device,
+        DType::F32,
+    );
+
+
+
     let mut bindings = Bindings::new().with_buffers(vec![
         uniforms_buffer.handle.clone().binding(),
         compact_gid_from_isect.handle.clone().binding(),
         tile_offsets.handle.clone().binding(),
         projected_splats.handle.clone().binding(),
         out_img.handle.clone().binding(),
+        out_img_gradient.handle.clone().binding(),
     ]);
 
     let visible = if bwd_info {
@@ -372,6 +386,38 @@ pub(crate) fn render_forward(
         );
     }
 
+    let out_upscaled_img = create_tensor(
+        [target_size.y as usize, target_size.x as usize, out_dim],
+        device,
+        DType::F32,
+    );
+
+
+    let tile_bounds_upscale = calc_tile_bounds(target_size);
+
+
+    let mut uniforms_upscale = uniforms.clone();
+    uniforms_upscale.tile_bounds = tile_bounds_upscale.into();
+
+    // Nb: This contains both static metadata and some dynamic data so can't pass this as metadata to execute. In the future
+    // should separate the two.
+    let uniforms_buffer_upscale: CubeTensor<WgpuRuntime> = create_uniform_buffer(uniforms_upscale, device, &client);
+
+    let upscale_task = Upscale::task();
+
+    unsafe {
+        client.execute_unchecked(
+            upscale_task,
+            CubeCount::Static(tile_bounds_upscale.x * tile_bounds_upscale.y, 1, 1),
+            Bindings::new().with_buffers(vec![
+                uniforms_buffer_upscale.handle.clone().binding(),
+                out_img.handle.clone().binding(),
+                out_img_gradient.handle.clone().binding(),
+                out_upscaled_img.handle.clone().binding(),
+            ]),
+        );
+    }
+
     // Sanity check the buffers.
     assert!(
         uniforms_buffer.is_contiguous(),
@@ -396,7 +442,7 @@ pub(crate) fn render_forward(
     );
 
     (
-        out_img,
+        out_upscaled_img,
         RenderAux {
             uniforms_buffer,
             tile_offsets,
@@ -406,6 +452,7 @@ pub(crate) fn render_forward(
             global_from_compact_gid,
             visible,
             img_size,
+            img_gradient: out_img_gradient,
         },
     )
 }

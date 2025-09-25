@@ -1,4 +1,6 @@
-use super::shaders::{map_gaussian_to_intersects, project_forward, project_visible, rasterize};
+use super::shaders::{
+    map_gaussian_to_intersects, project_forward, project_visible, rasterize, upscale,
+};
 use brush_kernel::kernel_source_gen;
 
 kernel_source_gen!(ProjectSplats {}, project_forward);
@@ -8,3 +10,4 @@ kernel_source_gen!(
     map_gaussian_to_intersects
 );
 kernel_source_gen!(Rasterize { bwd_info, webgpu }, rasterize);
+kernel_source_gen!(Upscale {}, upscale);

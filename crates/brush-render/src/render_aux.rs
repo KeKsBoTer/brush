@@ -27,6 +27,7 @@ pub struct RenderAux<B: Backend> {
     pub global_from_compact_gid: IntTensor<B>,
     pub visible: FloatTensor<B>,
     pub img_size: glam::UVec2,
+    pub img_gradient: FloatTensor<B>,
 }
 
 impl<B: Backend> RenderAux<B> {

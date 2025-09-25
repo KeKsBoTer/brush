@@ -222,6 +222,7 @@ impl<B: Backend + SplatBackwardOps<B> + SplatForward<B>, C: CheckpointStrategy>
             uniforms_buffer: aux.uniforms_buffer.clone(),
             visible: <Self as AutodiffBackend>::from_inner(aux.visible),
             img_size: aux.img_size,
+            img_gradient: <Self as AutodiffBackend>::from_inner(aux.img_gradient.clone()),
         };
 
         match prep_nodes {

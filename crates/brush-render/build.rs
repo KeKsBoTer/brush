@@ -7,6 +7,7 @@ fn main() -> miette::Result<()> {
             "src/shaders/project_visible.wgsl",
             "src/shaders/map_gaussian_to_intersects.wgsl",
             "src/shaders/rasterize.wgsl",
+            "src/shaders/upscale.wgsl",
         ],
         &["src/shaders/helpers.wgsl"],
         "src/shaders/mod.rs",

@@ -11,6 +11,7 @@
     @group(0) @binding(6) var<storage, read_write> visible: array<f32>;
 #else
     @group(0) @binding(4) var<storage, read_write> out_img: array<u32>;
+    @group(0) @binding(5) var<storage, read_write> out_img_gradient: array<array<vec4<f32>,3>>;
 #endif
 
 var<workgroup> range_uniform: vec2u;
@@ -51,6 +52,10 @@ fn main(
     // current visibility left to render
     var T = 1.0;
     var pix_out = vec3f(0.0);
+    var pix_grad_out = array<vec3f, 4>(
+        vec3f(0.0), vec3f(0.0), vec3f(0.0), vec3f(0.0)
+    );
+    var alpha_acc: vec3f= vec3f(0.0);
     var done = !inside;
 
     // each thread loads one gaussian at a time before rasterizing its
@@ -90,13 +95,33 @@ fn main(
                     break;
                 }
 
+                let dg_dx = (- conic.x * delta.x - conic.y * delta.y);
+                let dg_dy = (- conic.y * delta.x - conic.z * delta.y);
+                let dg_dxy = -conic.y;
+
+                let dalpha_dx = dg_dx * alpha;
+                let dalpha_dy = dg_dy * alpha;
+                let dalpha_dxy = (dg_dx * dg_dy  + dg_dxy) * alpha;
+
+
                 #ifdef BWD_INFO
                     // Count visible if contribution is at least somewhat significant.
                     visible[load_gid[t]] = 1.0;
                 #endif
 
                 let vis = alpha * T;
-                pix_out += max(color.rgb, vec3f(0.0)) * vis;
+                let color_rgb = max(color.rgb, vec3f(0.0));
+                pix_out += color_rgb * vis;
+
+                pix_grad_out[0] += color_rgb * (T*dalpha_dxy - alpha_acc[2]*alpha - alpha_acc[1]*dalpha_dx - alpha_acc[0]*dalpha_dy);
+				pix_grad_out[1] += color_rgb * (T*dalpha_dx  - alpha_acc[0]*alpha);
+				pix_grad_out[2] += color_rgb * (T*dalpha_dy  - alpha_acc[1]*alpha);
+
+
+                alpha_acc.z = alpha_acc.z*(1.0 - alpha) + T * dalpha_dxy - alpha_acc.x * dalpha_dy - alpha_acc.y * dalpha_dx;
+                alpha_acc.x = alpha_acc.x*(1.0 - alpha) + T * dalpha_dx;
+                alpha_acc.y = alpha_acc.y*(1.0 - alpha) + T * dalpha_dy;
+
                 T = next_T;
             }
         }
@@ -106,13 +131,19 @@ fn main(
         // Compose with background. Nb that color is already pre-multiplied
         // by definition.
         let final_color = vec4f(pix_out + T * uniforms.background.rgb, 1.0 - T);
+        
+        // TODO consider background color in gradient
 
         #ifdef BWD_INFO
             out_img[pix_id] = final_color;
         #else
             let colors_u = vec4u(clamp(final_color * 255.0, vec4f(0.0), vec4f(255.0)));
+            // let colors_u = vec4u(vec4f(clamp((pix_grad_out[0]+1.)*0.5 * 255.0, vec3f(0.0), vec3f(255.0)),255.0));
             let packed: u32 = colors_u.x | (colors_u.y << 8u) | (colors_u.z << 16u) | (colors_u.w << 24u);
             out_img[pix_id] = packed;
+            out_img_gradient[pix_id][0] = vec4f(pix_grad_out[0],alpha_acc.x);
+            out_img_gradient[pix_id][1] = vec4f(pix_grad_out[1],alpha_acc.y);
+            out_img_gradient[pix_id][2] = vec4f(pix_grad_out[2],alpha_acc.z);
         #endif
     }
 }

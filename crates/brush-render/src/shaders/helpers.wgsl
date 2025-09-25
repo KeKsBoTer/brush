@@ -62,6 +62,11 @@ struct RenderUniforms {
 
     // Nb: Alpha is ignored atm.
     background: vec4f,
+
+    // Img resolution (w, h)
+    target_size: vec2u,
+
+    pad: vec2u,
 }
 
 struct ProjectedSplat {
