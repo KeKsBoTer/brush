@@ -1,11 +1,6 @@
 use super::shaders;
 use crate::{
-    INTERSECTS_UPPER_BOUND, MainBackendBase,
-    camera::Camera,
-    dim_check::DimCheck,
-    kernels::{MapGaussiansToIntersect, ProjectSplats, ProjectVisible, Rasterize,Upscale},
-    render_aux::RenderAux,
-    sh::sh_degree_from_coeffs,
+    camera::Camera, dim_check::DimCheck, kernels::{MapGaussiansToIntersect, ProjectSplats, ProjectVisible, Rasterize,Upscale}, render_aux::RenderAux, sh::sh_degree_from_coeffs, MainBackendBase, INTERSECTS_UPPER_BOUND
 };
 use burn_cubecl::cubecl::cube;
 use burn_cubecl::cubecl::frontend::CompilationArg;
@@ -55,6 +50,35 @@ pub fn max_intersections(img_size: glam::UVec2, num_splats: u32) -> u32 {
     max_possible.min(INTERSECTS_UPPER_BOUND)
 }
 
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RenderMode {
+    Color=0,
+    Dx=1,
+    Dy=2,
+    DxDy=3,
+}
+
+impl Default for RenderMode {
+    fn default() -> Self {
+        RenderMode::Color
+    }    
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GradientMode {
+    Analytical=0,
+    Numerical=1,
+}
+
+impl Default for GradientMode {
+    fn default() -> Self {
+        GradientMode::Analytical
+    }    
+}
+
 pub(crate) fn render_forward(
     camera: &Camera,
     img_size: glam::UVec2,
@@ -64,6 +88,9 @@ pub(crate) fn render_forward(
     sh_coeffs: CubeTensor<WgpuRuntime>,
     raw_opacities: CubeTensor<WgpuRuntime>,
     background: Vec3,
+    render_mode: RenderMode,
+    gradient_mode: GradientMode,
+    upscale_factor: f32,
     bwd_info: bool,
 ) -> (CubeTensor<WgpuRuntime>, RenderAux<MainBackendBase>) {
     assert!(
@@ -72,8 +99,7 @@ pub(crate) fn render_forward(
     );
     
     let target_size = glam::UVec2::new(img_size[0], img_size[1]);
-    let img_size = glam::UVec2::new(img_size[0]/4, img_size[1]/4);
-
+    let img_size = glam::UVec2::new((img_size[0] as f32/upscale_factor) as u32 , (img_size[1] as f32/upscale_factor) as u32);
     // Tensor params might not be contiguous, convert them to contiguous tensors.
     let means = into_contiguous(means);
     let log_scales = into_contiguous(log_scales);
@@ -128,7 +154,8 @@ pub(crate) fn render_forward(
         // Nb: Bit of a hack as these aren't _really_ uniforms but are written to by the shaders.
         num_visible: 0,
         target_size: target_size.into(),
-        pad: [0, 0],
+        render_mode: render_mode as u32,
+        gradient_mode:gradient_mode as u32
     };
 
     // Nb: This contains both static metadata and some dynamic data so can't pass this as metadata to execute. In the future

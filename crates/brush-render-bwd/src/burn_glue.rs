@@ -210,6 +210,9 @@ impl<B: Backend + SplatBackwardOps<B> + SplatForward<B>, C: CheckpointStrategy>
             sh_coeffs.clone().into_primitive(),
             raw_opacity.clone().into_primitive(),
             background,
+            1.0, // upscale_factor --- IGNORE ---
+            brush_render::render::RenderMode::Color,
+            brush_render::render::GradientMode::Analytical,
             true,
         );
 

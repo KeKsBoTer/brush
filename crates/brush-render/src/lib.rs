@@ -11,6 +11,8 @@ use glam::Vec3;
 use render_aux::RenderAux;
 use wgpu::{Adapter, Device, Queue};
 
+pub use crate::render::{GradientMode, RenderMode};
+
 mod burn_glue;
 mod dim_check;
 mod kernels;
@@ -62,6 +64,9 @@ pub trait SplatForward<B: Backend> {
         sh_coeffs: FloatTensor<B>,
         raw_opacities: FloatTensor<B>,
         background: Vec3,
+        upscale_factor: f32,
+        render_mode: RenderMode,
+        gradient_mode: GradientMode,
         bwd_info: bool,
     ) -> (FloatTensor<B>, RenderAux<B>);
 }

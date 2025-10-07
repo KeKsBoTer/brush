@@ -5,9 +5,7 @@ use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use brush_render::{
-    MainBackend,
-    camera::{Camera, focal_to_fov, fov_to_focal},
-    gaussian_splats::Splats,
+    camera::{focal_to_fov, fov_to_focal, Camera}, gaussian_splats::Splats, render::{GradientMode, RenderMode}, MainBackend
 };
 use eframe::egui_wgpu::Renderer;
 use egui::{Color32, Rect, Slider, collapsing_header::CollapsingState};
@@ -17,8 +15,7 @@ use tracing::trace_span;
 use web_time::Instant;
 
 use crate::{
-    UiMode, app::CameraSettings, burn_texture::BurnTexture, draw_checkerboard, panels::AppPane,
-    ui_process::UiProcess, widget_3d::Widget3D,
+    app::CameraSettings, burn_texture::BurnTexture, draw_checkerboard, panels::AppPane, ui_process::UiProcess, widget_3d::Widget3D, UiMode
 };
 
 #[derive(Clone, PartialEq)]
@@ -211,7 +208,10 @@ impl ScenePanel {
                     &camera,
                     size,
                     settings.background.unwrap_or(Vec3::ZERO),
+                    settings.upscale_factor.unwrap_or(1.0),
                     settings.splat_scale,
+                    settings.render_mode,
+                    settings.gradient_mode,
                 );
                 self.backbuffer.update_texture(img);
 
@@ -404,6 +404,7 @@ impl ScenePanel {
                     ui.label(egui::RichText::new("Splat Scale").size(12.0));
                     let mut settings = process.get_cam_settings();
                     let mut scale = settings.splat_scale.unwrap_or(1.0);
+                    let mut upscale_factor = settings.upscale_factor.unwrap_or(1.0);
 
                     let response = ui.add(
                         Slider::new(&mut scale, 0.01..=2.0)
@@ -416,6 +417,76 @@ impl ScenePanel {
                         settings.splat_scale = Some(scale);
                         process.set_cam_settings(&settings);
                     }
+
+                    ui.add_space(4.0);
+                    ui.label(egui::RichText::new("Upscale Factor").size(12.0));
+
+                    let response = ui.add(
+                        Slider::new(&mut upscale_factor, 1.0..=8.0)
+                            .logarithmic(false)
+                            .show_value(true)
+                            .custom_formatter(|val, _| format!("{val:.1}x")),
+                    );
+
+                    if response.changed() {
+                        settings.upscale_factor = Some(upscale_factor);
+                        process.set_cam_settings(&settings);
+                    }
+
+                    ui.add_space(4.0);
+                    ui.label(egui::RichText::new("Render Mode").size(12.0));
+                    ui.horizontal(|ui| {
+                        let render_mode = settings.render_mode;
+                        if ui
+                            .selectable_label(render_mode == RenderMode::Color, "Color")
+                            .clicked()
+                        {
+                            settings.render_mode = RenderMode::Color;
+                            process.set_cam_settings(&settings);
+                        }
+                        if ui
+                            .selectable_label(render_mode == RenderMode::Dx, "Dx")
+                            .clicked()
+                        {
+                            settings.render_mode = RenderMode::Dx;
+                            process.set_cam_settings(&settings);
+                        }
+                        if ui
+                            .selectable_label(render_mode == RenderMode::Dy, "Dy")
+                            .clicked()
+                        {
+                            settings.render_mode = RenderMode::Dy;
+                            process.set_cam_settings(&settings);
+                        }
+                        if ui
+                            .selectable_label(render_mode == RenderMode::DxDy, "DxDy")
+                            .clicked()
+                        {
+                            settings.render_mode = RenderMode::DxDy;
+                            process.set_cam_settings(&settings);
+                        }
+                        render_mode
+                    });
+                    ui.add_space(4.0);
+
+                    ui.label(egui::RichText::new("Gradient Mode").size(12.0));
+                    ui.horizontal(|ui| {
+                        let gradient_mode = settings.gradient_mode;
+                        if ui
+                            .selectable_label(gradient_mode == GradientMode::Analytical, "Analytical")
+                            .clicked()
+                        {
+                            settings.gradient_mode = GradientMode::Analytical;
+                            process.set_cam_settings(&settings);
+                        }
+                        if ui
+                            .selectable_label(gradient_mode == GradientMode::Numerical, "Finite Differences")
+                            .clicked()
+                        {
+                            settings.gradient_mode = GradientMode::Numerical;
+                            process.set_cam_settings(&settings);
+                        }
+                    });
 
                     ui.add_space(4.0);
 

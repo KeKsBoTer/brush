@@ -5,6 +5,7 @@ use crate::{
     camera_controls::CameraClamping, datasets::DatasetPanel, scene::ScenePanel,
     settings::SettingsPanel, stats::StatsPanel,
 };
+use brush_render::render::{GradientMode, RenderMode};
 use eframe::egui;
 use egui::ThemePreference;
 use egui_tiles::{SimplificationOptions, Tile, TileId, Tiles};
@@ -66,9 +67,12 @@ impl egui_tiles::Behavior<PaneType> for AppTree {
 pub struct CameraSettings {
     pub speed_scale: Option<f32>,
     pub splat_scale: Option<f32>,
+    pub upscale_factor: Option<f32>,
     pub background: Option<Vec3>,
     pub grid_enabled: Option<bool>,
     pub clamping: CameraClamping,
+    pub render_mode: RenderMode,
+    pub gradient_mode: GradientMode,
 }
 
 pub struct App {

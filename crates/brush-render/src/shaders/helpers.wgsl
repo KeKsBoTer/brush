@@ -66,7 +66,11 @@ struct RenderUniforms {
     // Img resolution (w, h)
     target_size: vec2u,
 
-    pad: vec2u,
+    // what to render / show
+    render_mode: u32,
+
+    // analytical or numerical gradients
+    gradient_mode: u32,
 }
 
 struct ProjectedSplat {
@@ -181,7 +185,7 @@ fn calc_cam_J(mean_c: vec3f, focal: vec2f, img_size: vec2u, pixel_center: vec2f)
     return J;
 }
 
-fn calc_cov2d(cov3d: mat3x3f, mean_c: vec3f, focal: vec2f, img_size: vec2u, pixel_center: vec2f, viewmat: mat4x4f) -> mat2x2f {
+fn calc_cov2d(cov3d: mat3x3f, mean_c: vec3f, focal: vec2f, img_size: vec2u, pixel_center: vec2f, viewmat: mat4x4f,cov_blur:f32) -> mat2x2f {
     let R = mat3x3f(viewmat[0].xyz, viewmat[1].xyz, viewmat[2].xyz);
     let covar_cam = R * cov3d * transpose(R);
 
@@ -190,8 +194,8 @@ fn calc_cov2d(cov3d: mat3x3f, mean_c: vec3f, focal: vec2f, img_size: vec2u, pixe
     var cov2d = J * covar_cam * transpose(J);
 
     // add a little blur along axes.
-    cov2d[0][0] += COV_BLUR;
-    cov2d[1][1] += COV_BLUR;
+    cov2d[0][0] += cov_blur;
+    cov2d[1][1] += cov_blur;
     return cov2d;
 }
 
@@ -206,8 +210,8 @@ fn inverse(m: mat2x2f) -> mat2x2f {
 
 const COV_BLUR: f32 = 0.3;
 
-fn cov_compensation(cov2d: vec3f) -> f32 {
-    let cov_orig = cov2d - vec3f(COV_BLUR, 0.0, COV_BLUR);
+fn cov_compensation(cov2d: vec3f,cov_blur:f32) -> f32 {
+    let cov_orig = cov2d - vec3f(cov_blur, 0.0, cov_blur);
     let det_orig = cov_orig.x * cov_orig.z - cov_orig.y * cov_orig.y;
     let det = cov2d.x * cov2d.z - cov2d.y * cov2d.y;
     return sqrt(max(0.0, det_orig / det));

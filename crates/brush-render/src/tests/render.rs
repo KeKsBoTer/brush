@@ -36,6 +36,9 @@ fn renders_at_all() {
         sh_coeffs.into_primitive().tensor(),
         raw_opacity.into_primitive().tensor(),
         Vec3::ZERO,
+        1.0,
+        crate::render::RenderMode::Color,
+        crate::render::GradientMode::Analytical,
         true,
     );
     aux.validate_values();

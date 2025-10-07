@@ -1274,6 +1274,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "brush-process",
+ "brush-render",
  "brush-ui",
  "brush-vfs",
  "eframe",

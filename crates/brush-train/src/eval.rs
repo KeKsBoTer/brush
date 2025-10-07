@@ -1,5 +1,6 @@
 use anyhow::Result;
 use brush_dataset::scene::{sample_to_tensor, view_to_sample_image};
+use brush_render::render::{GradientMode, RenderMode};
 use brush_render::SplatForward;
 use brush_render::camera::Camera;
 use brush_render::gaussian_splats::Splats;
@@ -44,6 +45,9 @@ pub fn eval_stats<B: Backend + SplatForward<B>>(
             splats.sh_coeffs.val().into_primitive().tensor(),
             splats.raw_opacity.val().into_primitive().tensor(),
             Vec3::ZERO,
+            1.0, // upscale_factor
+            RenderMode::Color,
+            GradientMode::Analytical,
             true,
         );
         (Tensor::from_primitive(TensorPrimitive::Float(img)), aux)

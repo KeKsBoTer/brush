@@ -17,6 +17,7 @@ crate-type = ["cdylib"]
 brush-ui.path = "../brush-ui"
 brush-process.path = "../brush-process"
 brush-vfs.path = "../brush-vfs"
+brush-render.path = "../brush-render"
 
 glam.workspace = true
 eframe.workspace = true

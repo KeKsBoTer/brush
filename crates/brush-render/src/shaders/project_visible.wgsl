@@ -187,8 +187,11 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     let R = mat3x3f(viewmat[0].xyz, viewmat[1].xyz, viewmat[2].xyz);
     let mean_c = R * mean + viewmat[3].xyz;
 
+
+    let cov_blur = helpers::COV_BLUR * f32(uniforms.img_size.x)/f32(uniforms.target_size.x);
+
     let covar = helpers::calc_cov3d(scale, quat);
-    let cov2d = helpers::calc_cov2d(covar, mean_c, uniforms.focal, uniforms.img_size, uniforms.pixel_center, viewmat);
+    let cov2d = helpers::calc_cov2d(covar, mean_c, uniforms.focal, uniforms.img_size, uniforms.pixel_center, viewmat,cov_blur);
     let conic = helpers::inverse(cov2d);
 
     // compute the projected mean

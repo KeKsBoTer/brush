@@ -10,11 +10,7 @@ use burn_wgpu::WgpuRuntime;
 use glam::Vec3;
 
 use crate::{
-    MainBackendBase, SplatForward,
-    camera::Camera,
-    render::{calc_tile_bounds, max_intersections, render_forward},
-    render_aux::RenderAux,
-    shaders,
+    camera::Camera, render::{calc_tile_bounds, max_intersections, render_forward, GradientMode, RenderMode}, render_aux::RenderAux, shaders, MainBackendBase, SplatForward
 };
 
 // Implement forward functions for the inner wgpu backend.
@@ -28,10 +24,13 @@ impl SplatForward<Self> for MainBackendBase {
         sh_coeffs: FloatTensor<Self>,
         opacity: FloatTensor<Self>,
         background: Vec3,
+        upscale_factor: f32,
+        render_mode: RenderMode,
+        gradient_mode: GradientMode,
         bwd_info: bool,
     ) -> (FloatTensor<Self>, RenderAux<Self>) {
         render_forward(
-            camera, img_size, means, log_scales, quats, sh_coeffs, opacity, background, bwd_info,
+            camera, img_size, means, log_scales, quats, sh_coeffs, opacity, background, render_mode,gradient_mode,upscale_factor, bwd_info,
         )
     }
 }
@@ -46,6 +45,9 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
         sh_coeffs: FloatTensor<Self>,
         opacity: FloatTensor<Self>,
         background: Vec3,
+        upscale_factor: f32,
+        render_mode: RenderMode,
+        gradient_mode: GradientMode,
         bwd_info: bool,
     ) -> (FloatTensor<Self>, RenderAux<Self>) {
         #[derive(Debug)]
@@ -55,6 +57,9 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
             bwd_info: bool,
             background: Vec3,
             desc: CustomOpIr,
+            upscale_factor: f32,
+            render_mode: RenderMode,
+            gradient_mode: GradientMode,
         }
 
         impl<BT: BoolElement> Operation<FusionCubeRuntime<WgpuRuntime, BT>> for CustomOp {
@@ -86,6 +91,9 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
                     h.get_float_tensor::<MainBackendBase>(sh_coeffs),
                     h.get_float_tensor::<MainBackendBase>(opacity),
                     self.background,
+                    self.upscale_factor,
+                    self.render_mode,
+                    self.gradient_mode,
                     self.bwd_info,
                 );
 
@@ -181,7 +189,10 @@ impl SplatForward<Self> for Fusion<MainBackendBase> {
             img_size,
             bwd_info,
             background,
+            upscale_factor,
             desc: desc.clone(),
+            render_mode,
+            gradient_mode,
         };
         client.register(stream, OperationIr::Custom(desc), op);
         (out_img, aux)

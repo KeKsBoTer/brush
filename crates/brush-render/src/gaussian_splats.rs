@@ -1,10 +1,5 @@
 use crate::{
-    SplatForward,
-    bounding_box::BoundingBox,
-    camera::Camera,
-    render_aux::RenderAux,
-    sh::{sh_coeffs_for_degree, sh_degree_from_coeffs},
-    validation::validate_tensor_val,
+    bounding_box::BoundingBox, camera::Camera, render::{GradientMode, RenderMode}, render_aux::RenderAux, sh::{sh_coeffs_for_degree, sh_degree_from_coeffs}, validation::validate_tensor_val, SplatForward
 };
 use ball_tree::BallTree;
 use burn::{
@@ -413,7 +408,10 @@ impl<B: Backend + SplatForward<B>> Splats<B> {
         camera: &Camera,
         img_size: glam::UVec2,
         background: Vec3,
+        upscale_factor: f32,
         splat_scale: Option<f32>,
+        render_mode: RenderMode,
+        gradient_mode: GradientMode,    
     ) -> (Tensor<B, 3>, RenderAux<B>) {
         let mut scales = self.log_scales.val();
 
@@ -434,6 +432,9 @@ impl<B: Backend + SplatForward<B>> Splats<B> {
             self.sh_coeffs.val().into_primitive().tensor(),
             self.raw_opacity.val().into_primitive().tensor(),
             background,
+            upscale_factor,
+            render_mode,
+            gradient_mode,
             false,
         );
         let img = Tensor::from_primitive(TensorPrimitive::Float(img));

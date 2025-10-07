@@ -12,6 +12,8 @@ use std::sync::Arc;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 
+use brush_render::render::{GradientMode, RenderMode};
+
 mod three;
 
 pub fn wasm_app(canvas_name: &str) -> anyhow::Result<Arc<UiProcess>> {
@@ -86,6 +88,9 @@ impl CameraSettings {
                 max_yaw,
             },
             background: background.map(|v| v.to_glam()),
+            render_mode: RenderMode::Color,
+            gradient_mode: GradientMode::Analytical,
+            upscale_factor: None,
             grid_enabled,
         })
     }
