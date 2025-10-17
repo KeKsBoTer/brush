@@ -284,7 +284,7 @@ impl ScenePanel {
             let state = CollapsingState::load_with_default_open(
                 ui.ctx(),
                 ui.id().with("controls_collapse"),
-                false,
+                true,
             );
 
             // Show a header
