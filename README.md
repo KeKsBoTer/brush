@@ -1,3 +1,11 @@
+**This is a fork of Brush that supports [Lightweight Gradient-Aware Upscaling](https://niedermayr.dev/upscale3dgs/)** for faster rendering.
+
+The gradient calculation and upscaling code can be found here:
+
+- [Rasterization with image gradients](https://github.com/KeKsBoTer/brush/blob/main/crates/brush-render/src/shaders/rasterize.wgsl)
+
+- [Upscaling Shader](https://github.com/KeKsBoTer/brush/blob/main/crates/brush-render/src/shaders/upscale.wgsl)
+
 # Brush
 
 <video src=https://github.com/user-attachments/assets/5756967a-846c-44cf-bde9-3ca4c86f1a4d>A video showing various Brush features and scenes</video>
